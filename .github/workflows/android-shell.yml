@@ -28,7 +28,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           p=Path('android-shell/project/app/build.gradle')
-          t=p.read_text().replace('minSdk 26','minSdk 33')
+          t=p.read_text().replace('minSdk 26;', 'minSdk 33; ndk { abiFilters "arm64-v8a" };')
           t+='\nconfigurations.configureEach { resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib:1.8.22", "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22", "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22" }\n'
           p.write_text(t)
           p=Path('android-shell/project/app/src/main/java/com/shift/systemsafe/MainActivity.java')
@@ -51,6 +51,7 @@ jobs:
           cp "$TOOLS/zipalign" output/
           cp "$TOOLS/aapt2" output/
           find output -type f -exec sha256sum {} \; > output/SHA256SUMS
+          du -h output/*
           test "$(du -sm output | cut -f1)" -lt 30
       - uses: actions/upload-artifact@v4
         with:
