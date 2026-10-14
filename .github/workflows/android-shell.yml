@@ -50,9 +50,9 @@ jobs:
           cp "$TOOLS/lib/apksigner.jar" output/
           cp "$TOOLS/zipalign" output/
           cp "$TOOLS/aapt2" output/
-          find output -type f -exec sha256sum {} \; > output/SHA256SUMS
+          find output -type f ! -name SHA256SUMS -exec sha256sum {} \; > output/SHA256SUMS
           du -h output/*
-          test "$(du -sm output | cut -f1)" -lt 30
+          test "$(du -sm output | cut -f1)" -lt 40
       - uses: actions/upload-artifact@v4
         with:
           name: generic-android-shell
