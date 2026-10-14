@@ -1,0 +1,47 @@
+name: Android shell build
+on:
+  push:
+    branches: [s3-android-build]
+    paths: ['android-shell/**', '.github/workflows/android-shell.yml']
+permissions:
+  contents: read
+concurrency:
+  group: generic-android-shell
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          cache-disabled: true
+      - name: Generate generic project
+        run: |
+          python android-shell/generate.py
+          sed -i 's/minSdk 26/minSdk 33/' android-shell/project/app/build.gradle
+      - name: Compile Android application
+        run: gradle -p android-shell/project --no-daemon assembleRelease
+      - name: Prepare bounded build output
+        run: |
+          mkdir -p output
+          cp android-shell/project/app/build/outputs/apk/release/app-release-unsigned.apk output/shell-unsigned.apk
+          TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          cp "$TOOLS/lib/apksigner.jar" output/
+          cp "$TOOLS/zipalign" output/
+          cp "$TOOLS/aapt2" output/
+          find output -type f -exec sha256sum {} \; > output/SHA256SUMS
+          test "$(du -sm output | cut -f1)" -lt 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generic-android-shell
+          path: output/
+          retention-days: 1
+          compression-level: 9
+          if-no-files-found: error
