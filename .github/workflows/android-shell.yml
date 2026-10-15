@@ -42,6 +42,7 @@ jobs:
           PY
           python android-shell/mobile_language_patch.py
           python android-shell/safe_area_patch.py
+          sed -i "s/versionName '1.0.1'/versionName '1.0.2'/" android-shell/project/app/build.gradle
       - name: Compile and lint Android application
         run: gradle -p android-shell/project --no-daemon assembleRelease lintRelease
       - name: Prepare bounded build output
