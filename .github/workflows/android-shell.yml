@@ -93,6 +93,7 @@ jobs:
           t=t.replace('fail("Synthetic page failed to load");','fail("Synthetic page failed to load: "+js("({url:location.href,state:document.readyState,body:document.body?document.body.innerText.slice(0,200):null})"));')
           p.write_text(t)
           PY
+          python android-shell/layout_test_diagnostics.py
           gradle -p android-shell/project --no-daemon assembleDebug assembleDebugAndroidTest
       - name: Test actual Android system bars, touch targets, rotation and keyboard
         uses: reactivecircus/android-emulator-runner@v2
@@ -109,15 +110,18 @@ jobs:
             adb install -r android-shell/project/app/build/outputs/apk/debug/app-debug.apk
             adb install -r android-shell/project/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell settings put secure show_ime_with_hard_keyboard 1
+            adb shell wm dismiss-keyguard
             adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton
             sleep 3
             adb shell am instrument -w -r com.shift.systemsafe.test/androidx.test.runner.AndroidJUnitRunner | tee device-test-output/three-button.txt
             adb logcat -d -s System.out:I chromium:E AndroidRuntime:E > device-test-output/three-button-log.txt
-            grep -q 'OK (3 tests)' device-test-output/three-button.txt
+            adb pull /sdcard/Android/data/com.shift.systemsafe/files/layout-evidence device-test-output/three-button-screens || true
             adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural
             sleep 3
             adb shell am instrument -w -r com.shift.systemsafe.test/androidx.test.runner.AndroidJUnitRunner | tee device-test-output/gesture.txt
             adb logcat -d -s System.out:I chromium:E AndroidRuntime:E > device-test-output/gesture-log.txt
+            adb pull /sdcard/Android/data/com.shift.systemsafe/files/layout-evidence device-test-output/gesture-screens || true
+            grep -q 'OK (3 tests)' device-test-output/three-button.txt
             grep -q 'OK (3 tests)' device-test-output/gesture.txt
       - name: Save bounded synthetic test evidence
         if: always()
