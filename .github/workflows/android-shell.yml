@@ -40,8 +40,9 @@ jobs:
           t=t.replace(old,new)
           p.write_text(t)
           PY
-      - name: Compile Android application
-        run: gradle -p android-shell/project --no-daemon assembleRelease
+          python android-shell/mobile_language_patch.py
+      - name: Compile and lint Android application
+        run: gradle -p android-shell/project --no-daemon assembleRelease lintRelease
       - name: Prepare bounded build output
         run: |
           mkdir -p output
@@ -50,6 +51,7 @@ jobs:
           cp "$TOOLS/lib/apksigner.jar" output/
           cp "$TOOLS/zipalign" output/
           cp "$TOOLS/aapt2" output/
+          cp android-shell/project/app/build/reports/lint-results-release.txt output/ || true
           find output -type f ! -name SHA256SUMS -exec sha256sum {} \; > output/SHA256SUMS
           du -h output/*
           test "$(du -sm output | cut -f1)" -lt 40
