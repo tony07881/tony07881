@@ -10,6 +10,17 @@ extra=r'''
   device.executeShellCommand("wm dismiss-keyguard");
   device.executeShellCommand("input keyevent KEYCODE_WAKEUP");
   device.waitForIdle();
+  // A fresh hosted emulator occasionally shows a Pixel Launcher startup ANR.
+  // Dismiss ONLY that explicitly identified launcher dialog. Never hide an S3 ANR.
+  androidx.test.uiautomator.UiObject2 launcherDialog=device.findObject(androidx.test.uiautomator.By.textContains("Pixel Launcher isn't responding"));
+  if(launcherDialog!=null){
+   java.io.File dir=new java.io.File(instrumentation.getTargetContext().getExternalFilesDir(null),"layout-evidence");dir.mkdirs();
+   device.takeScreenshot(new java.io.File(dir,"launcher-startup-dialog.png"));
+   androidx.test.uiautomator.UiObject2 close=device.findObject(androidx.test.uiautomator.By.res("android:id/aerr_close"));
+   org.junit.Assert.assertNotNull("Launcher startup dialog close control",close);
+   close.click();device.waitForIdle();
+   System.out.println("TEST_SETUP: closed identified Pixel Launcher startup ANR; release app unchanged.");
+  }
  }
  private void snapshot(String name) {
   try {
