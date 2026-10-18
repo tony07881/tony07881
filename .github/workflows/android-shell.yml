@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -42,7 +44,8 @@ jobs:
           PY
           python android-shell/mobile_language_patch.py
           python android-shell/safe_area_patch.py
-          sed -i "s/versionName '1.0.1'/versionName '1.0.2'/" android-shell/project/app/build.gradle
+          python android-shell/speech_support_patch.py
+          python android-shell/speech_support_tests.py
       - name: Compile and lint Android application
         run: gradle -p android-shell/project --no-daemon assembleRelease lintRelease
       - name: Prepare bounded build output
@@ -95,7 +98,7 @@ jobs:
           PY
           python android-shell/layout_test_diagnostics.py
           gradle -p android-shell/project --no-daemon assembleDebug assembleDebugAndroidTest
-      - name: Test actual Android system bars, touch targets, rotation and keyboard
+      - name: Test Android speech support and system navigation
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -113,17 +116,21 @@ jobs:
             adb shell wm dismiss-keyguard
             adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton
             sleep 3
-            adb shell am instrument -w -r com.shift.systemsafe.test/androidx.test.runner.AndroidJUnitRunner | tee device-test-output/three-button.txt
+            adb shell am instrument -w -r -e class com.shift.systemsafe.SafeAreaTest com.shift.systemsafe.test/androidx.test.runner.AndroidJUnitRunner | tee device-test-output/three-button.txt
             adb logcat -d -s System.out:I chromium:E AndroidRuntime:E > device-test-output/three-button-log.txt
             adb pull /sdcard/Android/data/com.shift.systemsafe/files/layout-evidence device-test-output/three-button-screens || true
             adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural
             sleep 3
-            adb shell am instrument -w -r com.shift.systemsafe.test/androidx.test.runner.AndroidJUnitRunner | tee device-test-output/gesture.txt
+            adb shell am instrument -w -r -e class com.shift.systemsafe.SafeAreaTest com.shift.systemsafe.test/androidx.test.runner.AndroidJUnitRunner | tee device-test-output/gesture.txt
             adb logcat -d -s System.out:I chromium:E AndroidRuntime:E > device-test-output/gesture-log.txt
             adb pull /sdcard/Android/data/com.shift.systemsafe/files/layout-evidence device-test-output/gesture-screens || true
+            adb shell wm dismiss-keyguard
+            adb shell am instrument -w -r -e class com.shift.systemsafe.SpeechInputSupportTest com.shift.systemsafe.test/androidx.test.runner.AndroidJUnitRunner | tee device-test-output/speech-support.txt
+            adb logcat -d -s System.out:I chromium:E AndroidRuntime:E > device-test-output/speech-support-log.txt
             grep -q 'OK (3 tests)' device-test-output/three-button.txt
             grep -q 'OK (3 tests)' device-test-output/gesture.txt
-      - name: Save bounded synthetic test evidence
+            grep -q 'OK (6 tests)' device-test-output/speech-support.txt
+      - name: Save bounded synthetic and native capability evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
